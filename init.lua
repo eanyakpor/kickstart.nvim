@@ -276,6 +276,97 @@ require('lazy').setup({
   -- Then, because we use the `config` key, the configuration only runs
   -- after the plugin has been loaded:
   --  config = function() ... end
+  -- Used for debugging code specficially in python
+  {
+    'mfussenegger/nvim-dap',
+    dependencies = {
+      'nvim-neotest/nvim-nio',
+      'rcarriga/nvim-dap-ui',
+      'mfussenegger/nvim-dap-python',
+      'theHamsta/nvim-dap-virtual-text',
+    },
+    config = function()
+      local dap = require 'dap'
+      local dapui = require 'dapui'
+      local dap_python = require 'dap-python'
+
+      dap_python.setup 'python3' -- ✅ Ensures Python debugging works
+
+      -- Define debugging configurations for Python
+      dap.configurations.python = {
+        {
+          type = 'python',
+          request = 'launch', -- ✅ Launches the script instead of attaching
+          name = 'Launch File',
+          program = '${file}', -- ✅ Runs the currently open file
+          console = 'integratedTerminal', -- ✅ Ensures output is visible
+          justMyCode = false, -- ✅ Ensures external modules can be debugged
+          stopOnEntry = false, -- ✅ Prevents auto-pausing at script start
+          pythonPath = function()
+            return 'python3' -- ✅ Uses global Python (change if using venv)
+          end,
+        },
+      }
+
+      require('nvim-dap-virtual-text').setup {
+        commented = true, -- Show virtual text alongside comment
+      }
+
+      vim.fn.sign_define('DapBreakpoint', {
+        text = '',
+        texthl = 'DiagnosticSignError',
+        linehl = '',
+        numhl = '',
+      })
+
+      vim.fn.sign_define('DapBreakpointRejected', {
+        text = '', -- or "❌"
+        texthl = 'DiagnosticSignError',
+        linehl = '',
+        numhl = '',
+      })
+
+      vim.fn.sign_define('DapStopped', {
+        text = '', -- or "→"
+        texthl = 'DiagnosticSignWarn',
+        linehl = 'Visual',
+        numhl = 'DiagnosticSignWarn',
+      })
+
+      -- Automatically open/close DAP UI
+      dap.listeners.after.event_initialized['dapui_config'] = function()
+        dapui.open()
+      end
+
+      local opts = { noremap = true, silent = true }
+
+      -- Keymaps for debugging
+      vim.keymap.set('n', '<leader>db', function()
+        dap.toggle_breakpoint()
+      end, opts)
+      vim.keymap.set('n', '<leader>dc', function()
+        dap.continue()
+      end, opts)
+      vim.keymap.set('n', '<leader>do', function()
+        dap.step_over()
+      end, opts)
+      vim.keymap.set('n', '<leader>di', function()
+        dap.step_into()
+      end, opts)
+      vim.keymap.set('n', '<leader>dO', function()
+        dap.step_out()
+      end, opts)
+      vim.keymap.set('n', '<leader>dq', function()
+        dap.terminate()
+      end, opts)
+      vim.keymap.set('n', '<leader>du', function()
+        dapui.toggle()
+      end, opts)
+
+      -- ✅ Call `dapui.setup()` at the end to avoid "missing required field" error
+      require('dapui').setup {}
+    end,
+  },
 
   { -- Useful plugin to show you pending keybinds.
     'folke/which-key.nvim',
